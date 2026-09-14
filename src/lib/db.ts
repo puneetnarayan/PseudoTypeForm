@@ -1,8 +1,13 @@
 import { promises as fs } from "fs";
+import os from "os";
 import path from "path";
 import type { AnswerValue, Form, Question, Response } from "./types";
 
-const DATA_DIR = path.join(process.cwd(), "data");
+// Vercel (and most serverless hosts) ship a read-only filesystem except for
+// os.tmpdir(); process.cwd() is only writable in local development.
+const DATA_DIR = process.env.VERCEL
+  ? path.join(os.tmpdir(), "pseudotypeform-data")
+  : path.join(process.cwd(), "data");
 const DB_PATH = path.join(DATA_DIR, "db.json");
 
 interface Database {
