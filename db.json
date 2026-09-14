@@ -1,0 +1,52 @@
+{
+  "forms": [
+    {
+      "id": "268b05bd-27c5-40f8-b314-62543072c2d9",
+      "title": "Customer Feedback",
+      "description": "Help us improve — this takes less than a minute.",
+      "themeColor": "#4C6FFF",
+      "questions": [
+        {
+          "id": "0fa011f6-1892-4860-a001-728580939717",
+          "type": "short_text",
+          "title": "What's your name?",
+          "required": true
+        },
+        {
+          "id": "b4bfaae8-2637-4c7f-9a01-880f8d3da3ae",
+          "type": "email",
+          "title": "What's the best email to reach you at?",
+          "required": true
+        },
+        {
+          "id": "8379a9cf-d1ba-4825-984b-e14b52c64027",
+          "type": "multiple_choice",
+          "title": "How did you hear about us?",
+          "required": true,
+          "options": [
+            "Search engine",
+            "Social media",
+            "Friend or colleague",
+            "Other"
+          ]
+        },
+        {
+          "id": "8917e108-f07c-4f19-a941-4ac867219ad8",
+          "type": "rating",
+          "title": "How likely are you to recommend us to a friend?",
+          "description": "1 is not likely, 5 is extremely likely.",
+          "required": true
+        },
+        {
+          "id": "df22cd05-d36b-4c1e-8e5c-b56b2d9e8658",
+          "type": "long_text",
+          "title": "Anything else you'd like to share?",
+          "required": false
+        }
+      ],
+      "createdAt": "2026-09-14T03:49:19.740Z",
+      "updatedAt": "2026-09-14T03:49:19.740Z"
+    }
+  ],
+  "responses": []
+}
