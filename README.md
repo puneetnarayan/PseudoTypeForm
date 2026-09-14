@@ -48,39 +48,43 @@ Next.js (App Router) + TypeScript + Tailwind CSS.
 
 ### Setting up the GitHub-backed store
 
+`src/lib/db-github.ts` deliberately only calls the GitHub **Contents API**
+(read + create/update one file) and never the Git Data API (blobs/trees/
+commits/refs) — fine-grained personal access tokens can't call the latter
+(`403 Resource not accessible by personal access token`), only the former.
+One consequence: this code can't create the data branch itself, only the
+file on top of an already-existing branch.
+
+For `puneetnarayan/PseudoTypeForm`, the `data` branch and its seeded
+`db.json` already exist (branched off the empty `main`, so it starts out
+isolated from the app's source history). If you point this at a different
+repo/branch, create that branch first (e.g. via the GitHub UI's branch
+picker, a Claude Code session with GitHub write access, or a classic PAT/
+GitHub App token, which can use the Git Data API).
+
 1. Create a GitHub personal access token with write access to wherever the
-   data file should live:
-   - **Fine-grained token** (recommended): scope it to just the target repo,
-     with **Contents: Read and write** permission.
+   data file lives:
+   - **Fine-grained token**: scope it to just the target repo, with
+     **Contents: Read and write** permission.
    - Classic token: the `repo` scope.
-2. Decide where the data file lives — **pick one**:
-   - **A separate, dedicated repo** (recommended) — e.g. create an empty
-     `PseudoTypeForm-data` repo. This guarantees a form submission can never
-     accidentally trigger a Vercel deployment, since Vercel isn't watching
-     that repo at all. Set `GITHUB_DATA_OWNER` / `GITHUB_DATA_REPO` in Vercel
-     to point at it.
-   - **This same repo, on a separate `data` branch** (the default if you
-     don't set `GITHUB_DATA_OWNER`/`GITHUB_DATA_REPO`) — simpler to set up,
-     but if Vercel is configured to deploy previews for every branch, pushes
-     to `data` could trigger extra deployments. If you go this route, use
-     Vercel's **Ignored Build Step** project setting to skip builds for the
-     `data` branch — I wasn't able to verify the exact script/exit-code
-     convention for that feature from this environment, so check Vercel's
-     current docs for the precise syntax before relying on it.
-3. In your Vercel project settings, add these environment variables:
+2. In your Vercel project settings, add these environment variables:
    - `GITHUB_DATA_TOKEN` — the token from step 1 (mark it "Sensitive").
-   - `GITHUB_DATA_OWNER` / `GITHUB_DATA_REPO` — only if using a separate repo
-     (owner and repo name).
+   - `GITHUB_DATA_OWNER` / `GITHUB_DATA_REPO` — only if not using
+     `puneetnarayan/PseudoTypeForm`.
    - `GITHUB_DATA_BRANCH` — optional, defaults to `data`.
    - `GITHUB_DATA_PATH` — optional, defaults to `db.json`.
-4. Redeploy. The first read/write auto-creates the branch and seeds it with
-   the sample "Customer Feedback" form.
+3. Redeploy.
+
+If you're keeping the data branch in this same repo and Vercel deploys
+previews for every branch, pushes to `data` could trigger extra
+deployments. Vercel's **Ignored Build Step** project setting can skip
+builds for a specific branch, but I wasn't able to verify the exact
+script/exit-code convention for that feature from this environment (its
+network proxy blocks reaching Vercel's own docs) — check Vercel's current
+docs for the precise syntax before relying on it. Using a separate,
+dedicated repo for data sidesteps this entirely.
 
 Known limitations: the GitHub Contents API caps inline file reads at 1MB, so
-this won't scale past a modest number of forms/responses; writes retry a few
-times on a stale-SHA conflict but aren't fully safe under heavy concurrent
-traffic; and I verified the read/auth path against the live GitHub API but
-could not exercise the branch-creation/write path from within this session
-(its outbound network proxy blocks write calls to external APIs) — worth a
-quick smoke test (submit one response, check the repo for a new commit)
-after your first deploy.
+this won't scale past a modest number of forms/responses, and writes retry
+a few times on a stale-SHA conflict but aren't fully safe under heavy
+concurrent traffic.

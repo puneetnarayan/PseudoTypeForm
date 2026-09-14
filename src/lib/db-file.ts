@@ -1,9 +1,15 @@
 import { promises as fs } from "fs";
+import os from "os";
 import path from "path";
 import type { AnswerValue, Form, Response } from "./types";
 import { type Database, now, seedDatabase } from "./seed";
 
-const DATA_DIR = path.join(process.cwd(), "data");
+// This backend is meant for local dev, where process.cwd()/data is writable.
+// If it's ever used on Vercel (e.g. GITHUB_DATA_TOKEN isn't set there), fall
+// back to os.tmpdir() since Vercel's filesystem is read-only outside of it.
+const DATA_DIR = process.env.VERCEL
+  ? path.join(os.tmpdir(), "pseudotypeform-data")
+  : path.join(process.cwd(), "data");
 const DB_PATH = path.join(DATA_DIR, "db.json");
 
 let writeQueue: Promise<unknown> = Promise.resolve();

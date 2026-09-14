@@ -59,43 +59,29 @@ async function fetchFile(): Promise<{ db: Database; sha: string } | null> {
 }
 
 /**
- * Creates the data branch and its first commit from scratch via the Git
- * Data API. Used only the very first time this app writes data — after
- * that, fetchFile()/PUT contents handle everything.
+ * Creates the data file on the (already-existing) data branch, via a plain
+ * Contents API write (no `sha` -> creates rather than updates). Deliberately
+ * avoids the Git Data API (blobs/trees/commits/refs): fine-grained personal
+ * access tokens can't call those endpoints ("Resource not accessible by
+ * personal access token"), only the Contents API. This also means it can't
+ * create the branch itself — that has to already exist.
  */
 async function createInitialFile(db: Database): Promise<void> {
   const { owner, repo, path, branch } = config();
-  const content = JSON.stringify(db, null, 2);
+  const content = Buffer.from(JSON.stringify(db, null, 2), "utf-8").toString("base64");
 
-  const blobRes = await gh(`/repos/${owner}/${repo}/git/blobs`, {
-    method: "POST",
-    body: JSON.stringify({ content, encoding: "utf-8" }),
+  const res = await gh(`/repos/${owner}/${repo}/contents/${path}`, {
+    method: "PUT",
+    body: JSON.stringify({ message: "data: initialize data store", content, branch }),
   });
-  if (!blobRes.ok) return throwForStatus(blobRes, "blob creation");
-  const blob = (await blobRes.json()) as { sha: string };
-
-  const treeRes = await gh(`/repos/${owner}/${repo}/git/trees`, {
-    method: "POST",
-    body: JSON.stringify({ tree: [{ path, mode: "100644", type: "blob", sha: blob.sha }] }),
-  });
-  if (!treeRes.ok) return throwForStatus(treeRes, "tree creation");
-  const tree = (await treeRes.json()) as { sha: string };
-
-  const commitRes = await gh(`/repos/${owner}/${repo}/git/commits`, {
-    method: "POST",
-    body: JSON.stringify({ message: "data: initialize data store", tree: tree.sha }),
-  });
-  if (!commitRes.ok) return throwForStatus(commitRes, "commit creation");
-  const commit = (await commitRes.json()) as { sha: string };
-
-  const refRes = await gh(`/repos/${owner}/${repo}/git/refs`, {
-    method: "POST",
-    body: JSON.stringify({ ref: `refs/heads/${branch}`, sha: commit.sha }),
-  });
-  // 422 means the ref already exists — a concurrent request created it first, which is fine.
-  if (!refRes.ok && refRes.status !== 422) {
-    return throwForStatus(refRes, "branch creation");
+  if (res.ok || res.status === 422) return; // 422 here = someone else just created it too; fine.
+  if (res.status === 404) {
+    throw new Error(
+      `GitHub data branch "${branch}" doesn't exist in ${owner}/${repo}. Create it first ` +
+        `(the Contents API can create a file on an existing branch, but not the branch itself).`,
+    );
   }
+  return throwForStatus(res, "initial file creation");
 }
 
 async function readDb(): Promise<Database> {
